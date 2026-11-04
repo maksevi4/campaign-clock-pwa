@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12101c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Campaign Clock">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Campaign Clock</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --void:#12101c;
+  --panel:#1c1830;
+  --panel-2:#221d3a;
+  --line: rgba(201,164,76,0.22);
+  --gold:#c9a44c;
+  --gold-dim:#8a7238;
+  --parchment:#ece4d0;
+  --parchment-dim:#b8ae97;
+  --teal:#5a8a83;
+  --teal-dim:#31473f;
+  --crimson:#a3475a;
+  --crimson-dim:#4a2530;
+  --night:#0d0c17;
+  --dawn:#5a4a6b;
+  --day:#7a6a3a;
+  --dusk:#6b3f4a;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(90,138,131,0.10), transparent 55%),
+    radial-gradient(ellipse at 90% 110%, rgba(163,71,90,0.10), transparent 55%),
+    var(--void);
+  color:var(--parchment);
+  font-family:'Spectral', serif;
+  padding:14px 12px 40px;
+  min-height:100vh;
+}
+.wrap{max-width:1080px;margin:0 auto;}
+
+/* Header */
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;}
+.hdr-title{font-family:'Cinzel',serif;font-weight:700;font-size:20px;letter-spacing:0.03em;color:var(--gold);background:transparent;border:none;outline:none;padding:2px 0;max-width:100%;width:100%;}
+.hdr-title:focus{border-bottom:1px dashed var(--gold-dim);}
+.hdr-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--parchment-dim);}
+.save-status{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--parchment-dim);padding:5px 9px;border:1px solid var(--line);border-radius:3px;
+  white-space:nowrap;cursor:default;transition:all .2s ease;
+}
+.save-status.saving{color:var(--gold);border-color:var(--gold-dim);}
+.save-status.error{color:var(--crimson);border-color:var(--crimson);cursor:pointer;}
+.save-status.error:hover{background:var(--crimson-dim);}
+
+@media(min-width:640px){
+  body{padding:28px 22px 60px;}
+  .hdr{align-items:baseline;margin-bottom:22px;padding-bottom:16px;}
+  .hdr-title{font-size:26px;width:auto;}
+  .hdr-sub{font-size:11px;letter-spacing:0.14em;}
+  .save-status{font-size:10.5px;letter-spacing:0.1em;padding:5px 10px;}
+}
+
+/* Layout: mobile-first single column, desktop splits into two */
+.grid{display:grid;grid-template-columns:1fr;gap:18px;}
+@media(min-width:860px){
+  .grid{grid-template-columns:340px 1fr;gap:22px;}
+}
+
+.panel{
+  background:linear-gradient(180deg, var(--panel), var(--panel-2));
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:16px;
+  position:relative;
+}
+@media(min-width:640px){ .panel{padding:20px;} }
+.panel::before{
+  content:'';position:absolute;inset:5px;border:1px solid rgba(201,164,76,0.08);border-radius:2px;pointer-events:none;
+}
+.panel-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:14px;}
+
+/* Dial */
+.dial-wrap{display:flex;flex-direction:column;align-items:center;}
+#dialSvgHolder svg{width:100%;height:auto;max-width:220px;display:block;margin:0 auto;}
+.dial-time{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;color:var(--parchment);margin-top:8px;letter-spacing:0.02em;}
+.dial-phase{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-top:2px;}
+.dial-date{font-size:14px;color:var(--parchment-dim);margin-top:10px;font-style:italic;text-align:center;}
+@media(min-width:640px){
+  .dial-time{font-size:34px;}
+  .dial-date{font-size:15px;}
+}
+
+/* Controls */
+.ctl-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}
+button{
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:0.03em;
+  background:var(--panel-2);color:var(--parchment);border:1px solid var(--line);
+  padding:10px 12px;border-radius:3px;cursor:pointer;transition:all .15s ease;
+  min-height:38px;
+}
+button:hover{border-color:var(--gold-dim);color:var(--gold);background:#26213f;}
+button:active{transform:translateY(1px);}
+button.primary{background:var(--teal-dim);border-color:var(--teal);color:var(--parchment);}
+button.primary:hover{background:#3c635b;color:#fff;}
+button.ghost{background:transparent;}
+button.danger:hover{border-color:var(--crimson);color:var(--crimson);}
+@media(min-width:640px){
+  button{font-size:11.5px;padding:8px 11px;min-height:auto;}
+}
+
+.custom-adv{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;}
+input[type=number]{
+  width:64px;background:var(--panel-2);border:1px solid var(--line);color:var(--parchment);
+  font-family:'IBM Plex Mono',monospace;padding:9px 8px;border-radius:3px;font-size:16px;
+}
+select{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--parchment);
+  font-family:'IBM Plex Mono',monospace;padding:9px 8px;border-radius:3px;font-size:16px;
+}
+input[type=text]{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--parchment);
+  font-family:'Spectral',serif;padding:9px 9px;border-radius:3px;font-size:16px;
+}
+@media(min-width:640px){
+  input[type=number],select,input[type=text]{font-size:14px;padding:7px 8px;}
+}
+
+hr.rule{border:none;border-top:1px solid var(--line);margin:16px 0;}
+
+details.adv summary{cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--parchment-dim);margin-top:16px;padding:6px 0;}
+details.adv{margin-top:6px;}
+.cal-edit-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;}
+.cal-edit-row input[type=text]{width:120px;}
+.cal-edit-row input[type=number]{width:60px;}
+
+/* Party */
+.party-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+@media(min-width:560px){.party-grid{grid-template-columns:1fr 1fr;gap:16px;}}
+.pc-card{background:linear-gradient(180deg, var(--panel), var(--panel-2));border:1px solid var(--line);border-radius:4px;padding:14px;}
+@media(min-width:640px){ .pc-card{padding:16px;} }
+.pc-name{
+  font-family:'Cinzel',serif;font-size:16px;color:var(--gold);background:transparent;border:none;outline:none;
+  width:100%;padding:2px 0;border-bottom:1px solid transparent;
+}
+.pc-name:focus{border-bottom:1px dashed var(--gold-dim);}
+.status-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;min-height:6px;}
+.status-chip{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:9px 10px;
+}
+.status-chip.expired{border-color:var(--crimson);background:var(--crimson-dim);}
+.sc-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.sc-name{font-size:14px;color:var(--parchment);}
+.sc-time{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;}
+.status-chip.expired .sc-time{color:var(--crimson);}
+.sc-bar{height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:6px;overflow:hidden;}
+.sc-bar-fill{height:100%;background:var(--teal);}
+.status-chip.expired .sc-bar-fill{background:var(--crimson);}
+.sc-remove{background:none;border:none;color:var(--parchment-dim);font-size:16px;cursor:pointer;padding:0 0 0 8px;min-height:auto;}
+.sc-remove:hover{color:var(--crimson);}
+.empty-note{font-size:12.5px;color:var(--parchment-dim);font-style:italic;}
+
+/* Rewind */
+.rewind-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--crimson);margin-top:16px;margin-bottom:8px;}
+button.rewind{background:var(--crimson-dim);border-color:var(--crimson);color:var(--parchment);}
+button.rewind:hover{background:#6b323f;color:#fff;border-color:var(--crimson);}
+
+/* Month grid */
+.month-view{margin-top:18px;}
+.month-view-hdr{font-size:13px;color:var(--parchment-dim);font-style:italic;margin-bottom:8px;text-align:center;}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.month-cell{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--parchment-dim);
+  background:var(--panel-2);border-radius:3px;border:1px solid transparent;
+}
+.month-cell.today{background:var(--gold);color:#1c1830;font-weight:700;border-color:var(--gold);}
+
+/* Party-wide status panel */
+.party-wide{margin-bottom:14px;}
+.party-wide .add-form{display:flex;flex-wrap:wrap;}
+
+/* Backup */
+.backup-box{margin-top:8px;}
+.backup-box textarea{
+  width:100%;min-height:90px;background:var(--panel-2);border:1px solid var(--line);color:var(--parchment);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;padding:8px;border-radius:3px;resize:vertical;margin-top:8px;
+}
+.backup-msg{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);margin-top:6px;min-height:14px;}
+.backup-msg.err{color:var(--crimson);}
+.file-btn{display:inline-block;}
+.file-btn input{display:none;}
+
+/* Rests */
+.rests-section{margin-top:18px;}
+.rest-line{font-size:12.5px;color:var(--parchment-dim);font-family:'IBM Plex Mono',monospace;margin:4px 0;}
+.rest-line.overdue{color:var(--crimson);}
+
+/* Meals */
+.meal-row{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);}
+.meal-text{font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--parchment-dim);}
+.meal-text.overdue{color:var(--crimson);}
+.meal-btns{display:flex;gap:6px;flex-wrap:wrap;}
+button.meal-btn{padding:6px 10px;font-size:11px;min-height:auto;}
+button.meal-btn.undo{color:var(--gold);border-color:var(--gold-dim);}
+button.meal-btn.undo:disabled{opacity:0.35;cursor:default;color:var(--parchment-dim);border-color:var(--line);background:var(--panel-2);}
+button.meal-btn.undo:disabled:hover{color:var(--parchment-dim);background:var(--panel-2);}
+
+.add-status{margin-top:12px;}
+.add-form{display:none;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.add-form.open{display:flex;}
+.add-form input[type=text]{flex:1 1 120px;min-width:100px;}
+
+.footer-note{margin-top:26px;font-size:11.5px;color:var(--parchment-dim);text-align:center;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div>
+      <input class="hdr-title" id="campaignTitle" value="Untitled Campaign" spellcheck="false">
+      <div class="hdr-sub">campaign clock &amp; status ledger</div>
+    </div>
+    <div class="save-status" id="saveStatus">saved</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: Dial + Time + Calendar -->
+    <div class="panel">
+      <div class="panel-label">Time &amp; Date</div>
+      <div class="dial-wrap">
+        <div id="dialSvgHolder"></div>
+        <div class="dial-time" id="timeText">--:--</div>
+        <div class="dial-phase" id="phaseText">—</div>
+        <div class="dial-date" id="dateText">—</div>
+      </div>
+
+      <div class="ctl-row" id="quickAdvance">
+        <!-- buttons injected -->
+      </div>
+      <div class="custom-adv">
+        <input type="number" id="customAmt" value="1" min="1">
+        <select id="customUnit">
+          <option value="minute">min</option>
+          <option value="hour" selected>hr</option>
+          <option value="day">day</option>
+        </select>
+        <button class="primary" id="customAdvBtn">Advance</button>
+      </div>
+
+      <hr class="rule">
+      <div class="ctl-row">
+        <button id="prevDayBtn">&larr; Day</button>
+        <button id="nextDayBtn">Day &rarr;</button>
+      </div>
+
+      <details class="adv">
+        <summary>Set time / date directly</summary>
+        <div class="cal-edit-row">
+          <span style="width:70px;font-size:12px;color:var(--parchment-dim)">Hour</span>
+          <input type="number" id="setHour" min="0" max="23">
+          <span style="width:70px;font-size:12px;color:var(--parchment-dim)">Minute</span>
+          <input type="number" id="setMinute" min="0" max="59">
+        </div>
+        <div class="cal-edit-row">
+          <span style="width:70px;font-size:12px;color:var(--parchment-dim)">Day</span>
+          <input type="number" id="setDay" min="1">
+          <span style="width:70px;font-size:12px;color:var(--parchment-dim)">Year</span>
+          <input type="number" id="setYear" min="0">
+        </div>
+        <div class="cal-edit-row">
+          <span style="width:70px;font-size:12px;color:var(--parchment-dim)">Month</span>
+          <select id="setMonth"></select>
+        </div>
+        <button class="ghost" id="applySetBtn" style="margin-top:6px;">Apply</button>
+      </details>
+
+      <div class="rewind-label">Rewind (undo)</div>
+      <div class="ctl-row" id="rewindRow"></div>
+
+      <div class="month-view">
+        <div class="month-view-hdr" id="monthViewHdr">—</div>
+        <div class="month-grid" id="monthGrid"></div>
+      </div>
+
+      <div class="rests-section">
+        <div class="panel-label" style="margin-bottom:8px;">Rests</div>
+        <div class="rest-line" id="shortRestLine">Last short rest: —</div>
+        <div class="rest-line" id="longRestLine">Last long rest: —</div>
+        <div class="ctl-row">
+          <button class="primary" id="shortRestBtn">Short rest (+1hr)</button>
+          <button class="primary" id="longRestBtn">Long rest (+8hr)</button>
+        </div>
+      </div>
+
+      <details class="adv">
+        <summary>Edit calendar (months &amp; lengths)</summary>
+        <div id="monthEditRows"></div>
+        <button class="ghost" id="addMonthBtn" style="margin-top:4px;">+ Add month</button>
+      </details>
+
+      <details class="adv">
+        <summary>Backup &amp; transfer (export / import)</summary>
+        <div class="backup-box">
+          <div class="ctl-row" style="margin-top:6px;">
+            <button id="exportBtn">Export (copy)</button>
+            <button id="downloadBtn">Download .json</button>
+            <label class="file-btn"><button type="button" id="pickFileBtn">Import file…</button><input type="file" id="importFile" accept=".json,application/json"></label>
+          </div>
+          <textarea id="backupText" placeholder="Export fills this box. To import: paste a backup here and press Import text." spellcheck="false"></textarea>
+          <div class="ctl-row" style="margin-top:8px;">
+            <button class="primary" id="importTextBtn">Import text</button>
+          </div>
+          <div class="backup-msg" id="backupMsg"></div>
+        </div>
+      </details>
+    </div>
+
+    <!-- RIGHT: Party -->
+    <div>
+      <div class="panel party-wide">
+        <div class="panel-label">Apply status to whole party</div>
+        <div class="add-form open">
+          <input type="text" placeholder="Status name" id="partyStName">
+          <input type="number" value="1" min="1" id="partyStAmt" style="width:52px;">
+          <select id="partyStUnit">
+            <option value="minute">min</option>
+            <option value="hour" selected>hr</option>
+            <option value="day">day</option>
+          </select>
+          <button class="primary" id="partyStAddBtn">Apply to all 4</button>
+        </div>
+      </div>
+
+      <div class="panel-label" style="margin-bottom:10px;">Party Statuses</div>
+      <div class="party-grid" id="partyGrid"></div>
+    </div>
+  </div>
+
+  <div class="footer-note">Saved automatically on this device. Use Backup &amp; transfer to move or back up your campaign.</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'campaign-clock-state-v1';
+
+const DEFAULT_MONTHS = [
+  {name:'Frostwane', days:30}, {name:'Thawmere', days:30}, {name:'Greentide', days:30},
+  {name:'Bloomrise', days:30}, {name:'Suncrest', days:30}, {name:'Highsun', days:30},
+  {name:'Emberfall', days:30}, {name:'Harvestide', days:30}, {name:'Duskmoor', days:30},
+  {name:'Rimehollow', days:30}, {name:'Snowveil', days:30}, {name:'Yearsend', days:30}
+];
+
+function defaultState(){
+  return {
+    title: 'Untitled Campaign',
+    time: { hour: 8, minute: 0 },
+    date: { day: 1, monthIndex: 0, year: 1 },
+    months: JSON.parse(JSON.stringify(DEFAULT_MONTHS)),
+    totalElapsed: 0,
+    lastShortRestAt: null,
+    lastLongRestAt: null,
+    party: [
+      { id:'p1', name:'Party Member 1', statuses: [], lastMealAt: null, lastMealType: null, mealUndo: null },
+      { id:'p2', name:'Party Member 2', statuses: [], lastMealAt: null, lastMealType: null, mealUndo: null },
+      { id:'p3', name:'Party Member 3', statuses: [], lastMealAt: null, lastMealType: null, mealUndo: null },
+      { id:'p4', name:'Party Member 4', statuses: [], lastMealAt: null, lastMealType: null, mealUndo: null }
+    ]
+  };
+}
+
+const MEAL_WARN_MINUTES_LIGHT = 12*60;
+const MEAL_WARN_MINUTES_NORMAL = 24*60;
+const REST_WARN_MINUTES = 24*60;
+
+let state = defaultState();
+let statusIdCounter = 1;
+
+function normalizeState(parsed){
+  const st = Object.assign(defaultState(), parsed);
+  if(!st.months || !st.months.length) st.months = JSON.parse(JSON.stringify(DEFAULT_MONTHS));
+  if(!st.party || st.party.length !== 4) st.party = defaultState().party;
+  if(typeof st.totalElapsed !== 'number') st.totalElapsed = 0;
+  if(st.lastShortRestAt === undefined) st.lastShortRestAt = null;
+  if(st.lastLongRestAt === undefined) st.lastLongRestAt = null;
+  st.party.forEach(pc=>{
+    if(pc.lastMealAt === undefined) pc.lastMealAt = null;
+    if(pc.lastMealType === undefined) pc.lastMealType = null;
+    if(pc.mealUndo === undefined) pc.mealUndo = null;
+    if(!Array.isArray(pc.statuses)) pc.statuses = [];
+  });
+  if(!st.time || typeof st.time.hour !== 'number' || typeof st.time.minute !== 'number') st.time = {hour:8, minute:0};
+  if(!st.date || typeof st.date.day !== 'number') st.date = {day:1, monthIndex:0, year:1};
+  if(st.date.monthIndex >= st.months.length || st.date.monthIndex < 0) st.date.monthIndex = 0;
+  return st;
+}
+
+function isValidBackup(o){
+  return o && typeof o === 'object' && o.time && o.date && Array.isArray(o.months) && o.months.length
+    && Array.isArray(o.party) && o.party.length === 4;
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      state = normalizeState(JSON.parse(raw));
+    }
+  }catch(e){
+    console.error('load failed', e);
+  }
+  render();
+}
+
+let saveTimer = null;
+
+function setSaveStatus(mode){
+  const el = document.getElementById('saveStatus');
+  el.classList.remove('saving','error');
+  if(mode === 'saved'){
+    el.textContent = 'saved';
+  } else if(mode === 'saving'){
+    el.textContent = 'saving…';
+    el.classList.add('saving');
+  } else if(mode === 'error'){
+    el.textContent = 'save failed — click to retry';
+    el.classList.add('error');
+  }
+}
+
+function trySave(dataStr){
+  try{
+    localStorage.setItem(STORAGE_KEY, dataStr);
+    setSaveStatus('saved');
+  }catch(e){
+    console.error('save failed', e);
+    setSaveStatus('error');
+  }
+}
+
+function saveState(){
+  clearTimeout(saveTimer);
+  setSaveStatus('saving');
+  saveTimer = setTimeout(()=>{
+    trySave(JSON.stringify(state));
+  }, 200);
+}
+
+document.getElementById('saveStatus').addEventListener('click', ()=>{
+  const el = document.getElementById('saveStatus');
+  if(el.classList.contains('error')) saveState();
+});
+
+// ---------- time math ----------
+function totalMinutesInDay(){ return 24*60; }
+
+function advanceMinutes(mins){
+  let elapsed = mins;
+  state.totalElapsed += elapsed;
+  // decrement all statuses first by the elapsed amount
+  decrementStatuses(elapsed);
+
+  let m = state.time.minute + elapsed;
+  let addHours = Math.floor(m/60);
+  state.time.minute = m % 60;
+  let h = state.time.hour + addHours;
+  let addDays = Math.floor(h/24);
+  state.time.hour = h % 24;
+  if(addDays > 0) advanceDays(addDays, true);
+}
+
+function advanceDays(numDays, skipStatusDecrement){
+  if(!skipStatusDecrement){
+    decrementStatuses(numDays*24*60);
+  }
+  for(let i=0;i<numDays;i++){
+    state.date.day += 1;
+    const monthLen = state.months[state.date.monthIndex].days;
+    if(state.date.day > monthLen){
+      state.date.day = 1;
+      state.date.monthIndex += 1;
+      if(state.date.monthIndex >= state.months.length){
+        state.date.monthIndex = 0;
+        state.date.year += 1;
+      }
+    }
+  }
+}
+
+function goPrevDay(){
+  state.date.day -= 1;
+  if(state.date.day < 1){
+    state.date.monthIndex -= 1;
+    if(state.date.monthIndex < 0){
+      state.date.monthIndex = state.months.length - 1;
+      state.date.year -= 1;
+    }
+    state.date.day = state.months[state.date.monthIndex].days;
+  }
+}
+
+function decrementStatuses(mins){
+  state.party.forEach(pc=>{
+    pc.statuses.forEach(s=>{
+      s.remaining -= mins;
+      if(s.remaining < 0) s.remaining = 0;
+    });
+  });
+}
+
+function incrementStatuses(mins){
+  state.party.forEach(pc=>{
+    pc.statuses.forEach(s=>{
+      s.remaining = Math.min(s.total, s.remaining + mins);
+    });
+  });
+}
+
+function rewindMinutes(mins){
+  state.totalElapsed = Math.max(0, state.totalElapsed - mins);
+  incrementStatuses(mins);
+  let minuteOfDay = state.time.hour*60 + state.time.minute - mins;
+  let daysBack = 0;
+  while(minuteOfDay < 0){
+    minuteOfDay += 24*60;
+    daysBack++;
+  }
+  state.time.hour = Math.floor(minuteOfDay/60);
+  state.time.minute = minuteOfDay % 60;
+  for(let i=0;i<daysBack;i++) goPrevDay();
+}
+
+function phaseForHour(h){
+  if(h>=5 && h<7) return {label:'Dawn', color:'var(--dawn)'};
+  if(h>=7 && h<12) return {label:'Morning', color:'var(--day)'};
+  if(h>=12 && h<17) return {label:'Afternoon', color:'var(--day)'};
+  if(h>=17 && h<19) return {label:'Dusk', color:'var(--dusk)'};
+  if(h>=19 || h<5) return {label:'Night', color:'var(--night)'};
+  return {label:'Day', color:'var(--day)'};
+}
+
+function fmtTime(h,m){
+  const hh = String(h).padStart(2,'0');
+  const mm = String(m).padStart(2,'0');
+  return hh+':'+mm;
+}
+
+function fmtDuration(totalMin){
+  totalMin = Math.max(0, Math.round(totalMin));
+  const days = Math.floor(totalMin/(60*24));
+  const hours = Math.floor((totalMin%(60*24))/60);
+  const mins = totalMin%60;
+  const parts = [];
+  if(days>0) parts.push(days+'d');
+  if(hours>0) parts.push(hours+'h');
+  if(mins>0 || parts.length===0) parts.push(mins+'m');
+  return parts.join(' ');
+}
+
+// ---------- dial rendering ----------
+function renderDial(){
+  const h = state.time.hour, m = state.time.minute;
+  const angle = ((h + m/60)/24)*360;
+  const phase = phaseForHour(h);
+
+  const segs = [
+    {from:0, to:5, color:'#211d38'},
+    {from:5, to:7, color:'#5a4a6b'},
+    {from:7, to:12, color:'#8a763f'},
+    {from:12, to:17, color:'#a4903f'},
+    {from:17, to:19, color:'#6b3f4a'},
+    {from:19, to:24, color:'#191527'}
+  ];
+  const R = 96, CX=110, CY=110;
+  function polar(cx,cy,r,angDeg){
+    const a = (angDeg-90) * Math.PI/180;
+    return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  }
+  function arcPath(fromH,toH,r){
+    const a1 = fromH/24*360, a2=toH/24*360;
+    const [x1,y1]=polar(CX,CY,r,a1);
+    const [x2,y2]=polar(CX,CY,r,a2);
+    const large = (a2-a1)>180?1:0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  }
+
+  let ticks = '';
+  for(let i=0;i<24;i++){
+    const major = i%6===0;
+    const r1 = major? R-14 : R-8;
+    const [x1,y1] = polar(CX,CY,r1,i/24*360);
+    const [x2,y2] = polar(CX,CY,R,i/24*360);
+    ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${major?'#c9a44c':'#5c5470'}" stroke-width="${major?1.6:1}"/>`;
+    if(major){
+      const [lx,ly] = polar(CX,CY,R-24,i/24*360);
+      ticks += `<text x="${lx}" y="${ly+3}" font-size="9" fill="#b8ae97" text-anchor="middle" font-family="IBM Plex Mono, monospace">${i}</text>`;
+    }
+  }
+
+  let arcs = '';
+  segs.forEach(s=>{
+    arcs += `<path d="${arcPath(s.from,s.to,R)}" stroke="${s.color}" stroke-width="14" fill="none" stroke-linecap="butt"/>`;
+  });
+
+  const [px,py] = polar(CX,CY,R-30,angle);
+  const isNight = (h>=19 || h<5);
+  const icon = isNight
+    ? `<circle cx="${px}" cy="${py}" r="6" fill="#ece4d0"/>`
+    : `<circle cx="${px}" cy="${py}" r="7" fill="#e8c96a"/>`;
+
+  const svg = `
+  <svg width="220" height="220" viewBox="0 0 220 220">
+    <circle cx="${CX}" cy="${CY}" r="${R+8}" fill="none" stroke="rgba(201,164,76,0.15)" stroke-width="1"/>
+    ${arcs}
+    ${ticks}
+    <line x1="${CX}" y1="${CY}" x2="${px}" y2="${py}" stroke="#c9a44c" stroke-width="2"/>
+    <circle cx="${CX}" cy="${CY}" r="3.5" fill="#c9a44c"/>
+    ${icon}
+  </svg>`;
+  document.getElementById('dialSvgHolder').innerHTML = svg;
+  document.getElementById('timeText').textContent = fmtTime(h,m);
+  document.getElementById('phaseText').textContent = phase.label;
+  const monthName = state.months[state.date.monthIndex].name;
+  document.getElementById('dateText').textContent = `Day ${state.date.day} of ${monthName}, Year ${state.date.year}`;
+}
+
+// ---------- party rendering ----------
+function renderParty(){
+  const grid = document.getElementById('partyGrid');
+  grid.innerHTML = '';
+  state.party.forEach(pc=>{
+    const card = document.createElement('div');
+    card.className = 'pc-card';
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'pc-name';
+    nameInput.value = pc.name;
+    nameInput.spellcheck = false;
+    nameInput.addEventListener('change', ()=>{ pc.name = nameInput.value || pc.name; saveState(); });
+    card.appendChild(nameInput);
+
+    const list = document.createElement('div');
+    list.className = 'status-list';
+    if(pc.statuses.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-note';
+      empty.textContent = 'No active statuses.';
+      list.appendChild(empty);
+    } else {
+      pc.statuses.slice().sort((a,b)=> (a.remaining<=0)-(b.remaining<=0) || a.remaining-b.remaining ).forEach(s=>{
+        const chip = document.createElement('div');
+        chip.className = 'status-chip' + (s.remaining<=0 ? ' expired' : '');
+        const pct = s.total>0 ? Math.max(0, Math.min(100, (s.remaining/s.total)*100)) : 0;
+        chip.innerHTML = `
+          <div class="sc-top">
+            <span class="sc-name">${escapeHtml(s.name)}</span>
+            <span style="display:flex;align-items:center;">
+              <span class="sc-time">${s.remaining<=0 ? 'expired' : fmtDuration(s.remaining)}</span>
+              <button class="sc-remove" title="Remove">✕</button>
+            </span>
+          </div>
+          <div class="sc-bar"><div class="sc-bar-fill" style="width:${pct}%"></div></div>
+        `;
+        chip.querySelector('.sc-remove').addEventListener('click', ()=>{
+          pc.statuses = pc.statuses.filter(x=>x.id!==s.id);
+          saveState(); render();
+        });
+        list.appendChild(chip);
+      });
+    }
+    card.appendChild(list);
+
+    const mealRow = document.createElement('div');
+    mealRow.className = 'meal-row';
+    const mealElapsed = pc.lastMealAt===null ? null : (state.totalElapsed - pc.lastMealAt);
+    const warnThreshold = pc.lastMealType==='light' ? MEAL_WARN_MINUTES_LIGHT : MEAL_WARN_MINUTES_NORMAL;
+    const mealOverdue = mealElapsed===null || mealElapsed >= warnThreshold;
+    const mealText = document.createElement('div');
+    mealText.className = 'meal-text' + (mealOverdue ? ' overdue' : '');
+    if(mealElapsed===null){
+      mealText.textContent = '🍖 No meal logged';
+    } else {
+      const typeLabel = pc.lastMealType==='light' ? 'light' : 'normal';
+      mealText.textContent = `🍖 Last meal: ${fmtDuration(mealElapsed)} ago (${typeLabel})`;
+    }
+
+    const mealBtns = document.createElement('div');
+    mealBtns.className = 'meal-btns';
+
+    function logMeal(type){
+      pc.mealUndo = { at: pc.lastMealAt, type: pc.lastMealType };
+      pc.lastMealAt = state.totalElapsed;
+      pc.lastMealType = type;
+      saveState(); render();
+    }
+
+    const lightBtn = document.createElement('button');
+    lightBtn.className = 'meal-btn';
+    lightBtn.textContent = 'Light meal';
+    lightBtn.addEventListener('click', ()=> logMeal('light'));
+
+    const normalBtn = document.createElement('button');
+    normalBtn.className = 'meal-btn';
+    normalBtn.textContent = 'Normal meal';
+    normalBtn.addEventListener('click', ()=> logMeal('normal'));
+
+    const undoBtn = document.createElement('button');
+    undoBtn.className = 'meal-btn undo';
+    undoBtn.textContent = '↺ Undo';
+    undoBtn.title = 'Undo last meal log';
+    if(!pc.mealUndo){
+      undoBtn.disabled = true;
+    } else {
+      undoBtn.addEventListener('click', ()=>{
+        pc.lastMealAt = pc.mealUndo.at;
+        pc.lastMealType = pc.mealUndo.type;
+        pc.mealUndo = null;
+        saveState(); render();
+      });
+    }
+
+    mealBtns.appendChild(lightBtn);
+    mealBtns.appendChild(normalBtn);
+    mealBtns.appendChild(undoBtn);
+    mealRow.appendChild(mealText);
+    mealRow.appendChild(mealBtns);
+    card.appendChild(mealRow);
+
+    const addWrap = document.createElement('div');
+    addWrap.className = 'add-status';
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = '+ Add status';
+    const form = document.createElement('div');
+    form.className = 'add-form';
+    form.innerHTML = `
+      <input type="text" placeholder="Status name" class="st-name">
+      <input type="number" value="1" min="1" class="st-amt" style="width:52px;">
+      <select class="st-unit">
+        <option value="minute">min</option>
+        <option value="hour" selected>hr</option>
+        <option value="day">day</option>
+      </select>
+      <button class="primary st-add">Add</button>
+    `;
+    toggleBtn.addEventListener('click', ()=>{
+      form.classList.toggle('open');
+    });
+    form.querySelector('.st-add').addEventListener('click', ()=>{
+      const nameEl = form.querySelector('.st-name');
+      const amtEl = form.querySelector('.st-amt');
+      const unitEl = form.querySelector('.st-unit');
+      const name = nameEl.value.trim();
+      const amt = parseFloat(amtEl.value);
+      if(!name || !amt || amt<=0) return;
+      const mult = unitEl.value==='minute'?1:unitEl.value==='hour'?60:60*24;
+      const totalMin = amt*mult;
+      pc.statuses.push({ id:'s'+(statusIdCounter++)+'_'+Date.now(), name, remaining: totalMin, total: totalMin });
+      nameEl.value=''; amtEl.value=1;
+      form.classList.remove('open');
+      saveState(); render();
+    });
+    addWrap.appendChild(toggleBtn);
+    addWrap.appendChild(form);
+    card.appendChild(addWrap);
+
+    grid.appendChild(card);
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ---------- calendar editor ----------
+function renderMonthEditor(){
+  const holder = document.getElementById('monthEditRows');
+  holder.innerHTML = '';
+  state.months.forEach((mo, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'cal-edit-row';
+    row.innerHTML = `
+      <input type="text" value="${escapeHtml(mo.name)}" class="mo-name">
+      <input type="number" value="${mo.days}" min="1" class="mo-days">
+      <button class="ghost mo-del" title="Remove month">✕</button>
+    `;
+    row.querySelector('.mo-name').addEventListener('change', e=>{ mo.name = e.target.value || mo.name; saveState(); renderDial(); renderSetMonthOptions(); });
+    row.querySelector('.mo-days').addEventListener('change', e=>{
+      const v = parseInt(e.target.value);
+      mo.days = v>0? v : mo.days;
+      if(state.date.day > mo.days) state.date.day = mo.days;
+      saveState(); renderDial();
+    });
+    row.querySelector('.mo-del').addEventListener('click', ()=>{
+      if(state.months.length<=1) return;
+      state.months.splice(idx,1);
+      if(state.date.monthIndex >= state.months.length) state.date.monthIndex = state.months.length-1;
+      saveState(); renderMonthEditor(); renderDial(); renderSetMonthOptions();
+    });
+    holder.appendChild(row);
+  });
+}
+
+function renderSetMonthOptions(){
+  const sel = document.getElementById('setMonth');
+  sel.innerHTML = '';
+  state.months.forEach((mo,idx)=>{
+    const opt = document.createElement('option');
+    opt.value = idx; opt.textContent = mo.name;
+    if(idx===state.date.monthIndex) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// ---------- quick advance buttons ----------
+const QUICK = [
+  {label:'+10m', mins:10},
+  {label:'+30m', mins:30},
+  {label:'+1hr', mins:60},
+  {label:'+4hr', mins:240},
+];
+function renderQuickButtons(){
+  const row = document.getElementById('quickAdvance');
+  row.innerHTML = '';
+  QUICK.forEach(q=>{
+    const b = document.createElement('button');
+    b.textContent = q.label;
+    b.addEventListener('click', ()=>{ advanceMinutes(q.mins); saveState(); render(); });
+    row.appendChild(b);
+  });
+}
+
+// ---------- rewind buttons ----------
+const REWINDS = [
+  {label:'-15m', mins:15},
+  {label:'-30m', mins:30},
+  {label:'-1hr', mins:60},
+];
+function renderRewindButtons(){
+  const row = document.getElementById('rewindRow');
+  row.innerHTML = '';
+  REWINDS.forEach(r=>{
+    const b = document.createElement('button');
+    b.className = 'rewind';
+    b.textContent = r.label;
+    b.addEventListener('click', ()=>{ rewindMinutes(r.mins); saveState(); render(); });
+    row.appendChild(b);
+  });
+}
+
+// ---------- month grid ----------
+function renderMonthGrid(){
+  const grid = document.getElementById('monthGrid');
+  const hdr = document.getElementById('monthViewHdr');
+  const mo = state.months[state.date.monthIndex];
+  hdr.textContent = `${mo.name}, Year ${state.date.year}`;
+  grid.innerHTML = '';
+  for(let d=1; d<=mo.days; d++){
+    const cell = document.createElement('div');
+    cell.className = 'month-cell' + (d===state.date.day ? ' today' : '');
+    cell.textContent = d;
+    grid.appendChild(cell);
+  }
+}
+
+// ---------- rests ----------
+function renderRests(){
+  const sLine = document.getElementById('shortRestLine');
+  const lLine = document.getElementById('longRestLine');
+  const sElapsed = state.lastShortRestAt===null ? null : (state.totalElapsed - state.lastShortRestAt);
+  const lElapsed = state.lastLongRestAt===null ? null : (state.totalElapsed - state.lastLongRestAt);
+  sLine.textContent = 'Last short rest: ' + (sElapsed===null ? 'none yet' : fmtDuration(sElapsed)+' ago');
+  lLine.textContent = 'Last long rest: ' + (lElapsed===null ? 'none yet' : fmtDuration(lElapsed)+' ago');
+  lLine.classList.toggle('overdue', lElapsed===null || lElapsed >= REST_WARN_MINUTES);
+}
+
+// ---------- master render ----------
+function render(){
+  document.getElementById('campaignTitle').value = state.title;
+  renderDial();
+  renderParty();
+  renderMonthGrid();
+  renderRests();
+  renderMonthEditor();
+  renderSetMonthOptions();
+  document.getElementById('setHour').value = state.time.hour;
+  document.getElementById('setMinute').value = state.time.minute;
+  document.getElementById('setDay').value = state.date.day;
+  document.getElementById('setYear').value = state.date.year;
+}
+
+// ---------- wire up static controls ----------
+document.getElementById('campaignTitle').addEventListener('change', e=>{ state.title = e.target.value || 'Untitled Campaign'; saveState(); });
+
+document.getElementById('customAdvBtn').addEventListener('click', ()=>{
+  const amt = parseFloat(document.getElementById('customAmt').value);
+  const unit = document.getElementById('customUnit').value;
+  if(!amt || amt<=0) return;
+  const mult = unit==='minute'?1:unit==='hour'?60:60*24;
+  advanceMinutes(amt*mult);
+  saveState(); render();
+});
+
+document.getElementById('shortRestBtn').addEventListener('click', ()=>{
+  advanceMinutes(60);
+  state.lastShortRestAt = state.totalElapsed;
+  saveState(); render();
+});
+document.getElementById('longRestBtn').addEventListener('click', ()=>{
+  advanceMinutes(480);
+  state.lastLongRestAt = state.totalElapsed;
+  saveState(); render();
+});
+
+document.getElementById('nextDayBtn').addEventListener('click', ()=>{
+  state.totalElapsed += 24*60;
+  advanceDays(1, false);
+  saveState(); render();
+});
+document.getElementById('prevDayBtn').addEventListener('click', ()=>{
+  state.totalElapsed = Math.max(0, state.totalElapsed - 24*60);
+  incrementStatuses(24*60);
+  goPrevDay();
+  saveState(); render();
+});
+
+document.getElementById('applySetBtn').addEventListener('click', ()=>{
+  const h = parseInt(document.getElementById('setHour').value);
+  const m = parseInt(document.getElementById('setMinute').value);
+  const d = parseInt(document.getElementById('setDay').value);
+  const y = parseInt(document.getElementById('setYear').value);
+  const moIdx = parseInt(document.getElementById('setMonth').value);
+  if(!isNaN(h)) state.time.hour = Math.max(0,Math.min(23,h));
+  if(!isNaN(m)) state.time.minute = Math.max(0,Math.min(59,m));
+  if(!isNaN(moIdx)) state.date.monthIndex = moIdx;
+  const maxDay = state.months[state.date.monthIndex].days;
+  if(!isNaN(d)) state.date.day = Math.max(1,Math.min(maxDay,d));
+  if(!isNaN(y)) state.date.year = y;
+  saveState(); render();
+});
+
+document.getElementById('addMonthBtn').addEventListener('click', ()=>{
+  state.months.push({name:'New Month', days:30});
+  saveState(); renderMonthEditor(); renderSetMonthOptions();
+});
+
+document.getElementById('partyStAddBtn').addEventListener('click', ()=>{
+  const nameEl = document.getElementById('partyStName');
+  const amtEl = document.getElementById('partyStAmt');
+  const unitEl = document.getElementById('partyStUnit');
+  const name = nameEl.value.trim();
+  const amt = parseFloat(amtEl.value);
+  if(!name || !amt || amt<=0) return;
+  const mult = unitEl.value==='minute'?1:unitEl.value==='hour'?60:60*24;
+  const totalMin = amt*mult;
+  state.party.forEach(pc=>{
+    pc.statuses.push({ id:'s'+(statusIdCounter++)+'_'+Date.now()+'_'+pc.id, name, remaining: totalMin, total: totalMin });
+  });
+  nameEl.value=''; amtEl.value=1;
+  saveState(); render();
+});
+
+// ---------- backup / transfer ----------
+function backupMsg(text, isErr){
+  const el = document.getElementById('backupMsg');
+  el.textContent = text;
+  el.classList.toggle('err', !!isErr);
+}
+function backupJson(){ return JSON.stringify(state, null, 2); }
+
+function applyImport(text){
+  let obj;
+  try{ obj = JSON.parse(text); }catch(e){ backupMsg('Not valid JSON.', true); return; }
+  if(!isValidBackup(obj)){ backupMsg('This does not look like a Campaign Clock backup.', true); return; }
+  if(!confirm('Replace the current campaign state with the imported backup?')) return;
+  state = normalizeState(obj);
+  saveState(); render();
+  backupMsg('Imported.');
+}
+
+document.getElementById('exportBtn').addEventListener('click', async ()=>{
+  const txt = backupJson();
+  const box = document.getElementById('backupText');
+  box.value = txt;
+  try{
+    await navigator.clipboard.writeText(txt);
+    backupMsg('Copied to clipboard.');
+  }catch(e){
+    box.focus(); box.select();
+    backupMsg('Select the text above and copy it manually.');
+  }
+});
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  const blob = new Blob([backupJson()], {type:'application/json'});
+  const a = document.createElement('a');
+  const d = new Date().toISOString().slice(0,10);
+  a.href = URL.createObjectURL(blob);
+  a.download = 'campaign-clock-' + d + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  backupMsg('Backup file downloaded.');
+});
+document.getElementById('pickFileBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{ applyImport(String(r.result)); e.target.value=''; };
+  r.readAsText(f);
+});
+document.getElementById('importTextBtn').addEventListener('click', ()=>{
+  const t = document.getElementById('backupText').value.trim();
+  if(!t){ backupMsg('Paste a backup into the box first.', true); return; }
+  applyImport(t);
+});
+
+// ---------- PWA: persistent storage + service worker ----------
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW registration failed', e));
+  });
+}
+
+renderQuickButtons();
+renderRewindButtons();
+loadState();
+</script>
+</body>
+</html>
