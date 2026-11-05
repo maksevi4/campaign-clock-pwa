@@ -1,6 +1,7 @@
 # Campaign Clock (PWA)
 
 D&D campaign clock: time of day, custom calendar, rests, meals, per-character timed statuses.
+The background changes by time of day in six steps (05–09, 09–13, 13–17, 17–20, 20–23:30, 23:30–05).
 Installable on a phone, works offline, saves to the device.
 
 ## Deploy on GitHub Pages
@@ -24,3 +25,6 @@ phones may keep showing the old cached version. Close and reopen the app once or
 Saved in the browser's localStorage under the key `campaign-clock-state-v1`, tied to the site address.
 It is lost if you clear site data, uninstall the app, or change the URL. Use
 "Backup & transfer" inside the app to export/import it (copy as text or .json file).
+
+## Version
+v2: stepwise sky background (sw.js CACHE_VERSION = v2). v1: first PWA package.

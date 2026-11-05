@@ -1,7 +1,7 @@
 // Campaign Clock service worker.
 // IMPORTANT: bump CACHE_VERSION every time you change any app file,
 // otherwise installed phones may keep serving the old cached version.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE = 'campaign-clock-' + CACHE_VERSION;
 
 const APP_SHELL = [
